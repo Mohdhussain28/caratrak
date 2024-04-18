@@ -1,2 +1,0 @@
-# GradnerdDevApp
-App dev stack
