@@ -30,50 +30,75 @@ async function getDecompressedGoldData(id, city) {
             return null;
         }
 
-        const formattedData = cityData.historicalData.map(item => ({
-            date: item.date,
-            tenGram24k: parseInt(item.TenGram24K)
-        }));
-
-        return formattedData;
+        return cityData.historicalData;
     } catch (err) {
         console.error('Error retrieving or decompressing data:', err);
         throw err;
     }
 }
 
-function transformGoldData(goldData) {
-    const transformedData = [];
+function transformGoldData(goldData, inputPrice, carat) {
+    let todayPrice;
+    if (carat === "24k") {
+        todayPrice = goldData[0].TenGram24K;
+    } else if (carat === "22k") {
+        todayPrice = goldData[0].TenGram22K;
+    }
 
-    const todayPrice = goldData[0].tenGram24k;
-    const yesterdayPrice = goldData[1].tenGram24k;
+    const marketPrice = todayPrice / 10;
+    const differenceInPrice = marketPrice - inputPrice;
 
-    const grams = [1, 8, 10, 25, 50, 100];
+    return {
+        carat: carat,
+        marketPrice: marketPrice,
+        inputPrice: inputPrice,
+        difference: differenceInPrice.toFixed(3),
+        differencePercentage: ((differenceInPrice / inputPrice) * 100).toFixed(3) + '%'
+    }
 
-    grams.forEach(gram => {
-        transformedData.push({
-            gram: gram,
-            today: todayPrice * (gram / 10),
-            yesterday: yesterdayPrice * (gram / 10),
-            change: (todayPrice - yesterdayPrice) * (gram / 10)
-        });
-    });
-
-    return transformedData;
 }
 
+async function storeTransformedGoldData(id, transformedGoldData) {
+    try {
+        // Get current timestamp in milliseconds since the epoch
+        const timestamp = new Date().getTime();
+
+        // Create the DynamoDB item
+        const item = {
+            id: { S: id },
+            compared_id: { N: timestamp },
+            timestamp: { N: timestamp }, // Store timestamp as a number
+            data: { S: JSON.stringify(transformedGoldData) }
+        };
+
+        // Define the parameters for DynamoDB putItem operation
+        const params = {
+            TableName: 'YourTableName',
+            Item: item
+        };
+
+        // Put the item into DynamoDB
+        await dynamodb.putItem(params).promise();
+
+        console.log('Data stored successfully');
+    } catch (err) {
+        console.error('Error storing data:', err);
+        throw err;
+    }
+}
 
 exports.lambdaHandler = async (event) => {
-    const queryParams = event.queryStringParameters;
-    if (!queryParams || !queryParams?.city) {
+    let city = event.queryStringParameters?.city;
+    const carat = event.queryStringParameters?.carat;
+    const inputPrice = parseFloat(event.queryStringParameters?.inputPrice);
+    const id = "23243435";
+    if (!city || !carat || !inputPrice) {
         return {
             statusCode: 400,
-            body: JSON.stringify({ message: 'City parameter is missing in the query string' })
+            body: JSON.stringify({ message: 'city, carat, or input price is missing in the query string' })
         };
     }
 
-    const id = "23243435";
-    let city = queryParams?.city;
     if (city && typeof city === 'string') {
         city = city.charAt(0).toUpperCase() + city.slice(1);
     }
@@ -87,8 +112,8 @@ exports.lambdaHandler = async (event) => {
             };
         }
 
-        const transformedGoldData = transformGoldData(goldData);
-
+        const transformedGoldData = transformGoldData(goldData, inputPrice, carat);
+        storeTransformedGoldDataw(id)
         return {
             statusCode: 200,
             body: JSON.stringify(transformedGoldData)

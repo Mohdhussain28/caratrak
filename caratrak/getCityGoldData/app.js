@@ -5,11 +5,9 @@ const zlib = require('zlib');
 AWS.config.update({ region: 'ap-south-1' });
 const dynamodb = new AWS.DynamoDB();
 
-
-const tableName = 'goldAPI-Table';
-
 // Function to fetch and decompress gold price data from DynamoDB
 async function getDecompressedGoldData(id, city) {
+    const tableName = 'goldAPI-Table';
     const params = {
         TableName: tableName,
         Key: {
@@ -60,7 +58,10 @@ exports.lambdaHandler = async (event) => {
     }
 
     const id = "23243435";
-    const city = queryParams?.city
+    let city = queryParams?.city
+    if (city && typeof city === 'string') {
+        city = city.charAt(0).toUpperCase() + city.slice(1);
+    }
 
     try {
         const goldData = await getDecompressedGoldData(id, city);
