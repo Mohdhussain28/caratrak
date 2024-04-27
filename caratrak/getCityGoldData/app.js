@@ -1,7 +1,6 @@
 const AWS = require('aws-sdk');
 const zlib = require('zlib');
 
-// Initialize the AWS SDK
 AWS.config.update({ region: 'ap-south-1' });
 const dynamodb = new AWS.DynamoDB();
 
@@ -25,7 +24,6 @@ async function getDecompressedGoldData(id, city) {
         const decompressedData = zlib.gunzipSync(compressedData).toString('utf-8');
         const parsedData = JSON.parse(decompressedData);
 
-        // console.log("hk",parsedData)
         const cityData = parsedData.GoldHistory.find(item => item.city === city);
         if (!cityData || !cityData.historicalData || !Array.isArray(cityData.historicalData)) {
             console.error('No valid data found for the provided city:', city);
@@ -33,14 +31,17 @@ async function getDecompressedGoldData(id, city) {
         }
 
         // Extracting required fields and formatting the output
-        const formattedData = cityData.historicalData.map(item => ({
-            date: item.date,
-            tenGram24k: parseInt(item.TenGram24K)
-        }));
-
-        return {
-            [city]: formattedData
+        const formattedData = {
+            dates: [],
+            tenGram24k: []
         };
+
+        cityData.historicalData.forEach(item => {
+            formattedData.dates.push(item.date);
+            formattedData.tenGram24k.push(parseInt(item.TenGram24K));
+        });
+
+        return formattedData;
     } catch (err) {
         console.error('Error retrieving or decompressing data:', err);
         throw err;
@@ -72,9 +73,30 @@ exports.lambdaHandler = async (event) => {
             };
         }
 
+        // Extracting tenGram24k values
+        const tenGram24kValues = goldData.tenGram24k;
+
+        // Finding highest and lowest values
+        const max = Math.max(...tenGram24kValues);
+        const min = Math.min(...tenGram24kValues);
+
+        // Calculating range and dividing into 7 parts
+        const range = max - min;
+        const interval = range / 7;
+
+        // Generating y-axis values
+        const yAxisValues = [];
+        for (let i = 0; i < 7; i++) {
+            yAxisValues.push(parseFloat((min + interval * i).toFixed(3)));
+        }
+
         return {
             statusCode: 200,
-            body: JSON.stringify(goldData)
+            body: JSON.stringify({
+                dates: goldData.dates,
+                tenGram24k: goldData.tenGram24k,
+                yAxisValues: yAxisValues
+            })
         };
     } catch (err) {
         console.error('Error retrieving or formatting gold data:', err);

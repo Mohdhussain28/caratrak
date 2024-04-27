@@ -3,25 +3,25 @@ const zlib = require('zlib');
 
 // Initialize the AWS SDK
 AWS.config.update({ region: 'ap-south-1' });
-const dynamodb = new AWS.DynamoDB();
+const docClient = new AWS.DynamoDB.DocumentClient();
 
 async function getDecompressedGoldData(id, city) {
     const tableName = 'goldAPI-Table';
     const params = {
         TableName: tableName,
         Key: {
-            'id': { S: id }
+            'id': id
         }
     };
 
     try {
-        const data = await dynamodb.getItem(params).promise();
+        const data = await docClient.get(params).promise();
         if (!data.Item) {
             console.error('No data found for the provided id:', id);
             return null;
         }
-        const compressedData = data.Item.compressedData.B;
-        const decompressedData = zlib.gunzipSync(compressedData).toString('utf-8');
+        const compressedData = data.Item.compressedData;
+        const decompressedData = zlib.gunzipSync(Buffer.from(compressedData, 'base64')).toString('utf-8');
         const parsedData = JSON.parse(decompressedData);
 
         const cityData = parsedData.GoldHistory.find(item => item.city === city);
@@ -37,48 +37,34 @@ async function getDecompressedGoldData(id, city) {
     }
 }
 
-function transformGoldData(goldData, inputPrice, carat) {
-    let todayPrice;
-    if (carat === "24k") {
-        todayPrice = goldData[0].TenGram24K;
-    } else if (carat === "22k") {
-        todayPrice = goldData[0].TenGram22K;
-    }
-
-    const marketPrice = todayPrice / 10;
-    const differenceInPrice = marketPrice - inputPrice;
-
-    return {
-        carat: carat,
-        marketPrice: marketPrice,
-        inputPrice: inputPrice,
-        difference: differenceInPrice.toFixed(3),
-        differencePercentage: ((differenceInPrice / inputPrice) * 100).toFixed(3) + '%'
-    }
-
-}
-
-async function storeTransformedGoldData(id, transformedGoldData) {
+async function storeTransformedGoldData(userId, transformedGoldData) {
     try {
-        // Get current timestamp in milliseconds since the epoch
         const timestamp = new Date().getTime();
 
-        // Create the DynamoDB item
-        const item = {
-            id: { S: id },
-            compared_id: { N: timestamp },
-            timestamp: { N: timestamp }, // Store timestamp as a number
-            data: { S: JSON.stringify(transformedGoldData) }
-        };
-
-        // Define the parameters for DynamoDB putItem operation
         const params = {
-            TableName: 'YourTableName',
-            Item: item
+            TableName: 'compared-table',
+            Key: { id: userId },
+            UpdateExpression: 'SET #comparedData = list_append(if_not_exists(#comparedData, :emptyList), :newData)',
+            ExpressionAttributeNames: {
+                '#comparedData': 'comparedData'
+            },
+            ExpressionAttributeValues: {
+                ':newData': [{
+                    data: {
+                        carat: transformedGoldData.carat,
+                        difference: transformedGoldData.difference,
+                        differencePercentage: transformedGoldData.differencePercentage,
+                        inputPrice: transformedGoldData.inputPrice,
+                        marketPrice: transformedGoldData.marketPrice
+                    },
+                    timestamp: timestamp
+                }],
+                ':emptyList': []
+            },
+            ReturnValues: 'UPDATED_NEW'
         };
 
-        // Put the item into DynamoDB
-        await dynamodb.putItem(params).promise();
+        await docClient.update(params).promise();
 
         console.log('Data stored successfully');
     } catch (err) {
@@ -113,7 +99,7 @@ exports.lambdaHandler = async (event) => {
         }
 
         const transformedGoldData = transformGoldData(goldData, inputPrice, carat);
-        storeTransformedGoldDataw(id)
+        await storeTransformedGoldData("user23", transformedGoldData)
         return {
             statusCode: 200,
             body: JSON.stringify(transformedGoldData)
@@ -126,3 +112,23 @@ exports.lambdaHandler = async (event) => {
         };
     }
 };
+
+function transformGoldData(goldData, inputPrice, carat) {
+    let todayPrice;
+    if (carat === "24k") {
+        todayPrice = goldData[0].TenGram24K;
+    } else if (carat === "22k") {
+        todayPrice = goldData[0].TenGram22K;
+    }
+
+    const marketPrice = todayPrice / 10;
+    const differenceInPrice = marketPrice - inputPrice;
+
+    return {
+        carat: carat,
+        marketPrice: marketPrice,
+        inputPrice: inputPrice,
+        difference: parseFloat(differenceInPrice.toFixed(3)),
+        differencePercentage: parseFloat(((differenceInPrice / inputPrice) * 100).toFixed(3))
+    };
+}
