@@ -59,23 +59,18 @@ exports.lambdaHandler = async (event) => {
     }
 
     const id = "23243435";
-    let city = queryParams?.city
+    let city = queryParams?.city;
     if (city && typeof city === 'string') {
-        city = city.charAt(0).toUpperCase() + city.slice(1);
+        // Convert city to lowercase if all letters are in capitals
+        if (city === city.toUpperCase()) {
+            city = city.charAt(0).toUpperCase() + city.slice(1).toLowerCase();
+        } else {
+            // Convert city to lowercase and then capitalize the first letter
+            city = city.charAt(0).toUpperCase() + city.slice(1).toLowerCase();
+        }
+        // Transform "new delhi" or "delhi" to "New-delhi"
+        city = city.toLowerCase() === 'new delhi' || city.toLowerCase() === 'delhi' ? 'New-delhi' : city;
     }
-
-    // to redefine 
-    // { if (city && typeof city === 'string') {
-    //     // Convert city to lowercase if all letters are in capitals
-    //     if (city === city.toUpperCase()) {
-    //         city = city.charAt(0).toUpperCase() + city.slice(1).toLowerCase();
-    //     } else {
-    //         // Convert city to lowercase and then capitalize the first letter
-    //         city = city.charAt(0).toUpperCase() + city.slice(1).toLowerCase();
-    //     }
-    //     // Transform "new delhi" or "delhi" to "New-delhi"
-    //     city = city.toLowerCase() === 'new delhi' || city.toLowerCase() === 'delhi' ? 'New-delhi' : city;
-    // }}
     try {
         const goldData = await getDecompressedGoldData(id, city);
         if (!goldData) {
@@ -113,8 +108,8 @@ exports.lambdaHandler = async (event) => {
     } catch (err) {
         console.error('Error retrieving or formatting gold data:', err);
         return {
-            statusCode: 500,
-            body: JSON.stringify({ message: 'Internal server error' })
+            statusCode: 404,
+            body: JSON.stringify({ message: 'Error retrieving or formatting gold data:' })
         };
     }
 };

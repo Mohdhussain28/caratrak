@@ -52,9 +52,9 @@ async function storeTransformedGoldData(userId, transformedGoldData) {
                 ':newData': [{
                     data: {
                         carat: transformedGoldData.carat,
-                        difference: transformedGoldData.difference,
-                        differencePercentage: transformedGoldData.differencePercentage,
-                        inputPrice: transformedGoldData.inputPrice,
+                        pricePerGram: transformedGoldData.pricePerGram,
+                        totalPrice: transformedGoldData.totalPrice,
+                        inputGrams: transformedGoldData.inputGrams, // Include inputGrams
                         marketPrice: transformedGoldData.marketPrice
                     },
                     timestamp: timestamp
@@ -76,21 +76,27 @@ async function storeTransformedGoldData(userId, transformedGoldData) {
 exports.lambdaHandler = async (event) => {
     let city = event.queryStringParameters?.city;
     const carat = event.queryStringParameters?.carat;
-    const inputPrice = parseFloat(event.queryStringParameters?.inputPrice);
+    const grams = parseFloat(event.queryStringParameters?.grams);
     const id = "23243435";
-    if (!city || !carat || !inputPrice) {
+    if (!city || !carat || !grams) {
         return {
             statusCode: 400,
-            body: JSON.stringify({ message: 'city, carat, or input price is missing in the query string' })
+            body: JSON.stringify({ message: 'city, carat, or grams is missing in the query string' })
         };
     }
 
     if (city && typeof city === 'string') {
-        city = city.charAt(0).toUpperCase() + city.slice(1);
+        if (city === city.toUpperCase()) {
+            city = city.charAt(0).toUpperCase() + city.slice(1).toLowerCase();
+        } else {
+            city = city.charAt(0).toUpperCase() + city.slice(1).toLowerCase();
+        }
+        city = city.toLowerCase() === 'new delhi' || city.toLowerCase() === 'delhi' ? 'New-delhi' : city;
     }
 
     try {
         const goldData = await getDecompressedGoldData(id, city);
+        console.log("dataa=>", goldData);
         if (!goldData) {
             return {
                 statusCode: 404,
@@ -98,7 +104,7 @@ exports.lambdaHandler = async (event) => {
             };
         }
 
-        const transformedGoldData = transformGoldData(goldData, inputPrice, carat);
+        const transformedGoldData = transformGoldData(goldData, grams, carat);
         await storeTransformedGoldData("user23", transformedGoldData)
         return {
             statusCode: 200,
@@ -113,7 +119,7 @@ exports.lambdaHandler = async (event) => {
     }
 };
 
-function transformGoldData(goldData, inputPrice, carat) {
+function transformGoldData(goldData, grams, carat) {
     let todayPrice;
     if (carat === "24k") {
         todayPrice = goldData[0].TenGram24K;
@@ -121,14 +127,13 @@ function transformGoldData(goldData, inputPrice, carat) {
         todayPrice = goldData[0].TenGram22K;
     }
 
-    const marketPrice = todayPrice / 10;
-    const differenceInPrice = marketPrice - inputPrice;
+    const pricePerGram = todayPrice / 10;
+    const totalPrice = pricePerGram * grams;
 
     return {
         carat: carat,
-        marketPrice: marketPrice,
-        inputPrice: inputPrice,
-        difference: parseFloat(differenceInPrice.toFixed(3)),
-        differencePercentage: parseFloat(((differenceInPrice / inputPrice) * 100).toFixed(3))
+        pricePerGram: pricePerGram,
+        inputGrams: grams,
+        totalPrice: parseFloat(totalPrice.toFixed(3))
     };
 }
