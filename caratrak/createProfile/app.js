@@ -7,14 +7,18 @@ exports.lambdaHandler = async (event) => {
     const body = JSON.parse(event.body);
     const { phone_number, name } = body;
 
-    const timestamp = new Date().getTime();
+    const timestamp = new Date();
+    const day = ('0' + timestamp.getDate()).slice(-2); // Add leading zero if needed
+    const month = ('0' + (timestamp.getMonth() + 1)).slice(-2); // Add leading zero if needed
+    const year = timestamp.getFullYear();
+    const formattedDate = `${day}/${month}/${year}`;
 
     const params = {
         TableName: 'profileTable',
         Item: {
             phone_number: phone_number,
             name: name,
-            creation_time: timestamp
+            creation_time: formattedDate
         }
     };
 
