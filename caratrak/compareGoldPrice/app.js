@@ -40,7 +40,7 @@ async function getDecompressedGoldData(id, city) {
 async function storeTransformedGoldData(userId, transformedGoldData) {
     try {
         const timestamp = new Date().getTime();
-
+        const uniqueId = userId + '_' + timestamp;
         const params = {
             TableName: 'compared-table',
             Key: { id: userId },
@@ -50,6 +50,7 @@ async function storeTransformedGoldData(userId, transformedGoldData) {
             },
             ExpressionAttributeValues: {
                 ':newData': [{
+                    item_id: uniqueId,
                     data: {
                         carat: transformedGoldData.carat,
                         pricePerGram: transformedGoldData.pricePerGram,
