@@ -6,7 +6,12 @@ const tableName = 'compared-table';
 exports.lambdaHandler = async (event) => {
     try {
         const { id, item_id } = JSON.parse(event.body);
-
+        if (!id || !item_id) {
+            return {
+                statusCode: 400,
+                body: JSON.stringify({ message: "id or item_id doesnt entered" })
+            }
+        }
         const getItemParams = {
             TableName: tableName,
             Key: {
@@ -32,7 +37,7 @@ exports.lambdaHandler = async (event) => {
 
         return {
             statusCode: 200,
-            body: JSON.stringify('Object deleted successfully')
+            body: JSON.stringify({ message: "Object deleted successfully" })
         };
     } catch (err) {
         console.error('Error deleting object:', err);
