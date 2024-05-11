@@ -4,8 +4,10 @@ const dynamodb = new AWS.DynamoDB.DocumentClient();
 const tableName = 'compared-table';
 
 exports.lambdaHandler = async (event) => {
+    const claims = event.requestContext.authorizer?.claims;
+    const id = claims.sub;
+    const item_id = event.queryStringParameters?.item_id;
     try {
-        const { id, item_id } = JSON.parse(event.body);
         if (!id || !item_id) {
             return {
                 statusCode: 400,

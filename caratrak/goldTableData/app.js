@@ -5,19 +5,19 @@ const zlib = require('zlib');
 AWS.config.update({ region: 'ap-south-1' });
 const dynamodb = new AWS.DynamoDB();
 
-async function getDecompressedGoldData(id, city) {
+async function getDecompressedGoldData(goldTable_id, city) {
     const tableName = 'goldAPI-Table';
     const params = {
         TableName: tableName,
         Key: {
-            'id': { S: id }
+            'id': { S: goldTable_id }
         }
     };
 
     try {
         const data = await dynamodb.getItem(params).promise();
         if (!data.Item) {
-            console.error('No data found for the provided id:', id);
+            console.error('No data found for the provided id:', goldTable_id);
             return null;
         }
         const compressedData = data.Item.compressedData.B;
@@ -72,7 +72,7 @@ exports.lambdaHandler = async (event) => {
         };
     }
 
-    const id = "23243435";
+    const goldTable_id = "23243435";
     let city = queryParams?.city;
     if (city && typeof city === 'string') {
         // Convert city to lowercase if all letters are in capitals
@@ -87,7 +87,7 @@ exports.lambdaHandler = async (event) => {
     }
 
     try {
-        const goldData = await getDecompressedGoldData(id, city);
+        const goldData = await getDecompressedGoldData(goldTable_id, city);
         if (!goldData) {
             return {
                 statusCode: 404,

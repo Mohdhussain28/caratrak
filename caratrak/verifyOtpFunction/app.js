@@ -55,7 +55,7 @@ async function verifyOTP(phone_number, otp, userPoolId, clientId) {
 
     try {
         await cognito.confirmSignUp(params).promise();
-        // console.log('User successfully verified OTP');
+        console.log('User successfully verified OTP');
 
         // Perform user password authentication
         const authParams = {
@@ -66,17 +66,69 @@ async function verifyOTP(phone_number, otp, userPoolId, clientId) {
                 PASSWORD: 'Admin@2000'
             }
         };
-
+        console.log("authParams==", authParams)
         const authResponse = await cognito.initiateAuth(authParams).promise();
 
-        // console.log('User authenticated with password');
+        console.log('User authenticated with password', authResponse);
         return authResponse;
     } catch (error) {
-        // console.error('Error verifying OTP:', error.message);
+        console.error('Error verifying OTP:', error.message);
         throw error;
     }
 }
+async function saveUserData(sub) {
+    // const timestamp = new Date();
+    // const day = timestamp.getDate();
+    // const monthIndex = timestamp.getMonth();
+    // const year = timestamp.getFullYear();
 
+    // const ordinalSuffix = (day) => {
+    //     if (day >= 11 && day <= 13) {
+    //         return 'th';
+    //     }
+    //     switch (day % 10) {
+    //         case 1: return 'st';
+    //         case 2: return 'nd';
+    //         case 3: return 'rd';
+    //         default: return 'th';
+    //     }
+    // };
+
+    // const months = [
+    //     'January', 'February', 'March', 'April', 'May', 'June',
+    //     'July', 'August', 'September', 'October', 'November', 'December'
+    // ];
+
+    // const formattedDate = `${day}${ordinalSuffix(day)} ${months[monthIndex]} ${year}`;
+
+    // console.log(formattedDate); // Output: 28th May 2024
+
+    const params = {
+        TableName: 'userTable',
+        Item: {
+            id: sub,
+            profileData: [
+                {
+                    key: "Name",
+                    value: "admin"
+                },
+                {
+                    key: "Phone Number",
+                    value: phone_number
+                }
+            ]
+        }
+    };
+    console.log("resss=", params)
+
+    try {
+        await dynamodb.put(params).promise();
+        return { statusCode: 200, body: JSON.stringify({ message: "Profile created successfully" }) };
+    } catch (err) {
+        console.error('Unable to save profile:', err);
+        return { statusCode: 500, body: JSON.stringify({ message: 'Unable to save profile' }) };
+    }
+}
 exports.lambdaHandler = async (event) => {
     try {
         // console.log("Received event:", event);
@@ -99,16 +151,18 @@ exports.lambdaHandler = async (event) => {
             console.log("result value", verifyResponse)
             if ((verifyResponse && verifyResponse.ChallengeName === 'CUSTOM_CHALLENGE' && verifyResponse.ChallengeResult === true) || result.AccessToken) {
                 // Add sub value to DynamoDB
-                const sub = await decodeToken(result.AccessToken);
-                console.log("subkeyyyyy", sub)
-                await addSubValue(phone_number, sub);
+                // const sub = await decodeToken(result.AccessToken);
+                // console.log("subkeyyyyy", sub)
+                // await addSubValue(phone_number, sub);
+                // await saveUserData(phone_number, sub)
 
                 return {
                     statusCode: 200,
                     body: JSON.stringify({
-                        message: 'OTP verification successful',
-                        authToken: result.AccessToken,
+                        message: 'User successfully authenticated',
+                        // authToken: result.AccessToken,
                         refreshToken: result.RefreshToken,
+                        idToken: result.IdToken,
                         expiresIn: result.ExpiresIn
                     })
                 };
@@ -125,13 +179,21 @@ exports.lambdaHandler = async (event) => {
             const result = await verifyOTP(phone_number, otp, userPoolId, clientId);
 
             if (result.AuthenticationResult && result.AuthenticationResult.AccessToken) {
-                // Add sub value to DynamoDB
-                const sub = await decodeToken(result.AuthenticationResult.AccessToken);
-                await addSubValue(phone_number, sub);
 
+                const sub = await decodeToken(result.AuthenticationResult.AccessToken);
+                // console.log("subkeyyyyy", sub)
+                // const ty = await saveUserData(sub)
+                // await addSubValue(phone_number, sub);
+                // console.log("userSaved Data", ty)
                 return {
                     statusCode: 200,
-                    body: JSON.stringify({ message: 'User successfully authenticated', authToken: result.AuthenticationResult.AccessToken }),
+                    body: JSON.stringify({
+                        message: 'User successfully authenticated',
+                        // authToken: response.AuthenticationResult.AccessToken,
+                        idToken: response.AuthenticationResult.IdToken,
+                        refreshToken: response.AuthenticationResult.RefreshToken,
+                        expiresIn: response.AuthenticationResult.ExpiresIn
+                    }),
                 };
             } else {
                 return {

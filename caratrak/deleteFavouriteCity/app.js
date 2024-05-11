@@ -2,7 +2,8 @@ const AWS = require("aws-sdk");
 const dynamodb = new AWS.DynamoDB.DocumentClient();
 
 exports.lambdaHandler = async (event) => {
-    const id = event.queryStringParameters?.id;
+    const claims = event.requestContext.authorizer?.claims;
+    const id = claims.sub;
     const citiesToDelete = event.queryStringParameters?.cities;
     const deleteAll = event.queryStringParameters?.deleteAll === "true";
 

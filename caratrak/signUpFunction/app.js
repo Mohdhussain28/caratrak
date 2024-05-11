@@ -61,8 +61,10 @@ async function saveUserData(phone_number, name) {
 }
 exports.lambdaHandler = async (event) => {
     const body = JSON.parse(event.body);
+
+    let isExist = false;
     // console.log("event==", event)
-    const { phone_number, name } = body;
+    const { phone_number } = body;
     const params = {
         ClientId: process.env.COGNITO_CLIENT_ID,
         Username: phone_number,
@@ -70,16 +72,16 @@ exports.lambdaHandler = async (event) => {
         UserAttributes: [
             {
                 Name: 'name',
-                Value: name
+                Value: "user"
             }
         ]
     };
 
     try {
         await cognito.signUp(params).promise();
-        const t = await saveUserData(phone_number, name);
-        console.log("afterr=", t)
-        return { statusCode: 200, body: JSON.stringify({ message: 'User signed up' }) };
+        // const t = await saveUserData(phone_number, name);
+        console.log("isExist result", isExist)
+        return { statusCode: 200, body: JSON.stringify({ message: 'User signed up', isExist }) };
     } catch (error) {
         if (error.code === 'UsernameExistsException') {
             // User already exists, initiate a custom authentication flow to sign in
@@ -92,7 +94,7 @@ exports.lambdaHandler = async (event) => {
             };
             try {
                 const signUpResponse = await cognito.initiateAuth(initiateAuthParams).promise();
-                return { statusCode: 200, body: JSON.stringify({ message: 'OTP sent to existing user', data: signUpResponse }) };
+                return { statusCode: 200, body: JSON.stringify({ message: 'OTP sent to existing user', data: signUpResponse, isExist: true }) };
             } catch (signInError) {
                 console.error(signInError);
                 return { statusCode: 500, body: JSON.stringify({ error: signInError.message }) };

@@ -5,19 +5,19 @@ const zlib = require('zlib');
 AWS.config.update({ region: 'ap-south-1' });
 const docClient = new AWS.DynamoDB.DocumentClient();
 
-async function getDecompressedGoldData(id, city) {
+async function getDecompressedGoldData(goldData_id, city) {
     const tableName = 'goldAPI-Table';
     const params = {
         TableName: tableName,
         Key: {
-            'id': id
+            'id': goldData_id
         }
     };
 
     try {
         const data = await docClient.get(params).promise();
         if (!data.Item) {
-            console.error('No data found for the provided id:', id);
+            console.error('No data found for the provided id:', goldData_id);
             return null;
         }
         const compressedData = data.Item.compressedData;
@@ -37,13 +37,13 @@ async function getDecompressedGoldData(id, city) {
     }
 }
 
-async function storeTransformedGoldData(userId, transformedGoldData) {
+async function storeTransformedGoldData(id, transformedGoldData) {
     try {
         const timestamp = new Date().getTime();
-        const uniqueId = userId + '_' + timestamp;
+        const uniqueId = id + '_' + timestamp;
         const params = {
             TableName: 'compared-table',
-            Key: { id: userId },
+            Key: { id: id },
             UpdateExpression: 'SET #comparedData = list_append(if_not_exists(#comparedData, :emptyList), :newData)',
             ExpressionAttributeNames: {
                 '#comparedData': 'comparedData'
@@ -78,7 +78,11 @@ exports.lambdaHandler = async (event) => {
     let city = event.queryStringParameters?.city;
     const carat = event.queryStringParameters?.carat;
     const grams = parseFloat(event.queryStringParameters?.grams);
-    const id = "23243435";
+    const claims = event.requestContext.authorizer?.claims;
+    const id = claims.sub;
+    // console.log("object", claims)
+    const goldData_id = "23243435";
+    console.log("ecnnn=", event)
     if (!city || !carat || !grams) {
         return {
             statusCode: 400,
@@ -96,8 +100,8 @@ exports.lambdaHandler = async (event) => {
     }
 
     try {
-        const goldData = await getDecompressedGoldData(id, city);
-        console.log("dataa=>", goldData);
+        const goldData = await getDecompressedGoldData(goldData_id, city);
+        // console.log("dataa=>", goldData);
         if (!goldData) {
             return {
                 statusCode: 404,
@@ -106,7 +110,7 @@ exports.lambdaHandler = async (event) => {
         }
 
         const transformedGoldData = transformGoldData(goldData, grams, carat);
-        await storeTransformedGoldData("user23", transformedGoldData)
+        await storeTransformedGoldData(id, transformedGoldData)
         return {
             statusCode: 200,
             body: JSON.stringify(transformedGoldData)

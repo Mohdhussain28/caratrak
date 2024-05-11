@@ -3,7 +3,8 @@ const AWS = require('aws-sdk');
 const docClient = new AWS.DynamoDB.DocumentClient();
 
 exports.lambdaHandler = async (event) => {
-    const id = event.queryStringParameters?.id
+    const claims = event.requestContext.authorizer?.claims;
+    const id = claims.sub;
     console.log("object", id)
 
     const params = {

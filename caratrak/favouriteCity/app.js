@@ -2,8 +2,9 @@ const AWS = require("aws-sdk");
 const dynamodb = new AWS.DynamoDB.DocumentClient();
 
 exports.lambdaHandler = async (event) => {
-    const body = JSON.parse(event.body);
-    const { id, city } = body;
+    const claims = event.requestContext.authorizer?.claims;
+    const id = claims.sub;
+    const city = event.queryStringParameters?.city;
 
     if (!id || !city) {
         return {
@@ -20,18 +21,17 @@ exports.lambdaHandler = async (event) => {
 
         const existingCities = getResult.Item ? getResult.Item.cities || [] : [];
 
-        const cityExists = existingCities.includes(city);
+        const cityExists = existingCities.some(c => c.city === city);
 
         if (!cityExists) {
-            existingCities.push(city);
+            existingCities.push({ city: city });
 
             await dynamodb.update({
                 TableName: "favourite-table",
                 Key: { id: id },
-                UpdateExpression: "SET cities = list_append(if_not_exists(cities, :emptyList), :newCity)",
+                UpdateExpression: "SET cities = :cities",
                 ExpressionAttributeValues: {
-                    ":emptyList": [],
-                    ":newCity": [city]
+                    ":cities": existingCities
                 }
             }).promise();
 
