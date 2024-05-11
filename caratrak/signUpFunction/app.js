@@ -84,7 +84,6 @@ exports.lambdaHandler = async (event) => {
         return { statusCode: 200, body: JSON.stringify({ message: 'User signed up', isExist }) };
     } catch (error) {
         if (error.code === 'UsernameExistsException') {
-            // User already exists, initiate a custom authentication flow to sign in
             const initiateAuthParams = {
                 AuthFlow: 'CUSTOM_AUTH',
                 ClientId: process.env.COGNITO_CLIENT_ID,

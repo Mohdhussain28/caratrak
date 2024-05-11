@@ -1,7 +1,6 @@
 const AWS = require('aws-sdk');
 const zlib = require('zlib');
 
-// Initialize the AWS SDK
 AWS.config.update({ region: 'ap-south-1' });
 const docClient = new AWS.DynamoDB.DocumentClient();
 
@@ -55,7 +54,7 @@ async function storeTransformedGoldData(id, transformedGoldData) {
                         carat: transformedGoldData.carat,
                         pricePerGram: transformedGoldData.pricePerGram,
                         totalPrice: transformedGoldData.totalPrice,
-                        inputGrams: transformedGoldData.inputGrams, // Include inputGrams
+                        inputGrams: transformedGoldData.inputGrams,
                         marketPrice: transformedGoldData.marketPrice
                     },
                     timestamp: timestamp

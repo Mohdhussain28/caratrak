@@ -1,7 +1,6 @@
 const AWS = require('aws-sdk');
 const zlib = require('zlib');
 
-// Initialize the AWS SDK
 AWS.config.update({ region: 'ap-south-1' });
 const dynamodb = new AWS.DynamoDB();
 
@@ -75,14 +74,11 @@ exports.lambdaHandler = async (event) => {
     const goldTable_id = "23243435";
     let city = queryParams?.city;
     if (city && typeof city === 'string') {
-        // Convert city to lowercase if all letters are in capitals
         if (city === city.toUpperCase()) {
             city = city.charAt(0).toUpperCase() + city.slice(1).toLowerCase();
         } else {
-            // Convert city to lowercase and then capitalize the first letter
             city = city.charAt(0).toUpperCase() + city.slice(1).toLowerCase();
         }
-        // Transform "new delhi" or "delhi" to "New-delhi"
         city = city.toLowerCase() === 'new delhi' || city.toLowerCase() === 'delhi' ? 'New-delhi' : city;
     }
 

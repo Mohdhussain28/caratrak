@@ -1,6 +1,5 @@
 const AWS = require('aws-sdk');
-
-const docClient = new AWS.DynamoDB.DocumentClient();
+const dynamodb = new AWS.DynamoDB.DocumentClient();
 
 exports.lambdaHandler = async (event) => {
     const claims = event.requestContext.authorizer?.claims;
@@ -16,7 +15,7 @@ exports.lambdaHandler = async (event) => {
     console.log("object22", params)
 
     try {
-        const data = await docClient.get(params).promise();
+        const data = await dynamodb.get(params).promise();
         if (!data.Item) {
             return { statusCode: 404, body: JSON.stringify({ message: 'Profile not found' }) };
         }

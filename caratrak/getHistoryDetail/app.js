@@ -1,5 +1,5 @@
 const AWS = require('aws-sdk');
-const docClient = new AWS.DynamoDB.DocumentClient();
+const dynamodb = new AWS.DynamoDB.DocumentClient();
 
 exports.lambdaHandler = async (event) => {
     const claims = event.requestContext.authorizer?.claims;
@@ -21,7 +21,7 @@ exports.lambdaHandler = async (event) => {
     };
 
     try {
-        const data = await docClient.query(params).promise();
+        const data = await dynamodb.query(params).promise();
         if (!data.Items || data.Items.length === 0) {
             return {
                 statusCode: 404,

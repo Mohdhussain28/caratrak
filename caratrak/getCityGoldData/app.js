@@ -4,7 +4,6 @@ const zlib = require('zlib');
 AWS.config.update({ region: 'ap-south-1' });
 const dynamodb = new AWS.DynamoDB();
 
-// Function to fetch and decompress gold price data from DynamoDB
 async function getDecompressedGoldData(goldTable_id, city) {
     const tableName = 'goldAPI-Table';
     const params = {
@@ -30,7 +29,6 @@ async function getDecompressedGoldData(goldTable_id, city) {
             return null;
         }
 
-        // Extracting required fields and formatting the output
         const formattedData = {
             dates: [],
             tenGram24k: []
@@ -48,7 +46,6 @@ async function getDecompressedGoldData(goldTable_id, city) {
     }
 }
 
-// Main Lambda handler function
 exports.lambdaHandler = async (event) => {
     const queryParams = event.queryStringParameters;
     if (!queryParams || !queryParams?.city) {
@@ -61,14 +58,11 @@ exports.lambdaHandler = async (event) => {
     const goldTable_id = "23243435";
     let city = queryParams?.city;
     if (city && typeof city === 'string') {
-        // Convert city to lowercase if all letters are in capitals
         if (city === city.toUpperCase()) {
             city = city.charAt(0).toUpperCase() + city.slice(1).toLowerCase();
         } else {
-            // Convert city to lowercase and then capitalize the first letter
             city = city.charAt(0).toUpperCase() + city.slice(1).toLowerCase();
         }
-        // Transform "new delhi" or "delhi" to "New-delhi"
         city = city.toLowerCase() === 'new delhi' || city.toLowerCase() === 'delhi' ? 'New-delhi' : city;
     }
     try {
@@ -80,18 +74,13 @@ exports.lambdaHandler = async (event) => {
             };
         }
 
-        // Extracting tenGram24k values
         const tenGram24kValues = goldData.tenGram24k;
-
-        // Finding highest and lowest values
         const max = Math.max(...tenGram24kValues);
         const min = Math.min(...tenGram24kValues);
 
-        // Calculating range and dividing into 7 parts
         const range = max - min;
         const interval = range / 7;
 
-        // Generating y-axis values
         const yAxisValues = [];
         for (let i = 0; i < 7; i++) {
             yAxisValues.push(parseFloat((min + interval * i).toFixed(3)));

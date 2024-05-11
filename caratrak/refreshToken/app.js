@@ -1,8 +1,7 @@
 const AWS = require("aws-sdk");
 const cognito = new AWS.CognitoIdentityServiceProvider();
 exports.lambdaHandler = async (event) => {
-    // Initialize the CognitoIdentityServiceProvider
-    const refreshToken = event.Authorization;
+    const refreshToken = event.headers?.Authorization;
     const clientId = process.env.COGNITO_CLIENT_ID;
     try {
         const params = {
