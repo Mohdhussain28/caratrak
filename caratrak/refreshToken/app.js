@@ -1,6 +1,7 @@
 const AWS = require("aws-sdk");
 const cognito = new AWS.CognitoIdentityServiceProvider();
 exports.lambdaHandler = async (event) => {
+    console.log("eee", event)
     const refreshToken = event.headers?.Authorization;
     const clientId = process.env.COGNITO_CLIENT_ID;
     try {
@@ -13,20 +14,16 @@ exports.lambdaHandler = async (event) => {
         };
 
         const result = await cognito.initiateAuth(params).promise();
+        console.log("object", result)
         return {
             stausCode: 200,
             body: JSON.stringify({
                 message: "retrieve tokens successfully",
                 idToken: result.AuthenticationResult.IdToken,
-                refreshToken: result.AuthenticationResult.RefreshToken,
+                accessToken: result.AuthenticationResult.AccessToken,
                 expiresIn: result.AuthenticationResult.ExpiresIn
             })
         }
-        // console.log('Access Token:', authResult.AuthenticationResult.AccessToken);
-        // console.log('ID Token:', authResult.AuthenticationResult.IdToken);
-        // console.log('Expires In:', authResult.AuthenticationResult.ExpiresIn, 'seconds');
-        // Here you can return these tokens or save them as needed
-
     } catch (error) {
         return {
             stausCode: error.stausCode || 500,
